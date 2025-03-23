@@ -32,9 +32,9 @@ public class WordController {
         return ResponseEntity.ok(wordService.getWordByName(name));
     }
 
-    @PutMapping
-    public ResponseEntity<WordResponseDTO> updateWord(@RequestBody WordRequestDTO wordRequestDTO){
-        return ResponseEntity.ok(wordService.updateWord(wordRequestDTO));
+    @PutMapping("/{id}")
+    public ResponseEntity<WordResponseDTO> updateWord(@PathVariable Long id, @RequestBody WordRequestDTO wordRequestDTO){
+        return ResponseEntity.ok(wordService.updateWord(id, wordRequestDTO));
     }
 
     @DeleteMapping("/{name}")
