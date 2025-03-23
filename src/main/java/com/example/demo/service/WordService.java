@@ -45,8 +45,8 @@ public class WordService {
         return wordMapper.mapListToDto(wordRepository.findAll());
     }
 
-    public WordResponseDTO updateWord(WordRequestDTO wordRequestDTO){
-        WordEntity word = wordRepository.findByName(wordRequestDTO.getName())
+    public WordResponseDTO updateWord(Long id, WordRequestDTO wordRequestDTO){
+        WordEntity word = wordRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException(ErrorMessages.ENTITY_NOT_FOUND.getMessage()));
         word.setName(wordRequestDTO.getName());
         word.setMean(wordRequestDTO.getMean());
