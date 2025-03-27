@@ -1,18 +1,18 @@
 package com.example.demo.service;
 
 import com.example.demo.constant.ErrorMessages;
-import com.example.demo.dto.GroupDTO;
-import com.example.demo.dto.RequestDTO;
-import com.example.demo.dto.WordRequestDTO;
-import com.example.demo.dto.WordResponseDTO;
+import com.example.demo.dto.*;
 import com.example.demo.entity.WordEntity;
 import com.example.demo.exception.ExistingEntityException;
 import com.example.demo.exception.NotFoundException;
 import com.example.demo.mapper.WordMapper;
 import com.example.demo.repository.WordRepository;
 import lombok.RequiredArgsConstructor;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -86,16 +86,47 @@ public class WordService {
         return wordList == null ? List.of() : wordMapper.mapListToDto(wordList);
     }
 
-    public Boolean checkAnwser(WordRequestDTO wordRequestDTO){
-        WordEntity wordEntity = getWordEntityByName(wordRequestDTO.getName());
-        if(wordEntity.getMean().equals(wordRequestDTO.getMean())) {
-            increaseRateByName(wordEntity.getName());
-            return true;
+    public String getConclusion(List<String> questionList, List<String> answerList){
+        List<String> wrongAnsweredQuestions = new ArrayList<>();
+        List<String> yourAnswers = new ArrayList<>();
+        List<String> correctAnswers = new ArrayList<>();
+        int mistakeCount = 0;
+        for (int i = 0; i < questionList.size(); i++) {
+            if (Boolean.FALSE.equals(checkAnswer(questionList.get(i), answerList.get(i)))) {
+                increaseRateByName(questionList.get(i));
+                wrongAnsweredQuestions.add(questionList.get(i));
+                yourAnswers.add(answerList.get(i));
+                correctAnswers.add(getMeanByName(questionList.get(i)));
+                mistakeCount++;
+            }
+            else {
+                decreaseRateByName(questionList.get(i));
+            }
         }
-        else{
-            decreaseRateByName(wordEntity.getName());
-            return false;
-        }
+        return getQuizReport(wrongAnsweredQuestions, yourAnswers, correctAnswers,
+                mistakeCount == questionList.size() ? 0d : (100d * (questionList.size()-mistakeCount) / questionList.size()));
+    }
+
+    private Boolean checkAnswer(String question, String answer){
+        WordEntity wordEntity = wordRepository.findByName(question)
+                .orElseThrow(() -> new NotFoundException(ErrorMessages.ENTITY_NOT_FOUND.getMessage()));
+        return wordEntity.getMean().equals(answer);
+    }
+
+    private String getQuizReport(List<String> wrongAnsweredQuestions, List<String> yourAnswers, List<String> correctAnswers,
+                                 double successRate){
+        JSONObject quizReportJA = new JSONObject();
+        quizReportJA.put("Wrong Answered Question", new JSONArray(wrongAnsweredQuestions));
+        quizReportJA.put("Your Answer", new JSONArray(yourAnswers));
+        quizReportJA.put("Correct Answer", new JSONArray(correctAnswers));
+        quizReportJA.put("Success Rate", successRate);
+        return quizReportJA.toString();
+    }
+
+    private String getMeanByName(String name){
+        WordEntity wordEntity = wordRepository.findByName(name)
+                .orElseThrow(() -> new NotFoundException(ErrorMessages.ENTITY_NOT_FOUND.getMessage()));
+        return wordEntity.getMean();
     }
 
     public List<WordResponseDTO> getWordListByGroupId(Long id){

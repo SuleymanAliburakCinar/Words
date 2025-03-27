@@ -1,5 +1,6 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.QuizRequestDTO;
 import com.example.demo.dto.RequestDTO;
 import com.example.demo.dto.WordRequestDTO;
 import com.example.demo.dto.WordResponseDTO;
@@ -43,18 +44,6 @@ public class WordController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/increase")
-    public ResponseEntity<Void> increaseRate(@RequestBody String name){
-        wordService.increaseRateByName(name);
-        return ResponseEntity.noContent().build();
-    }
-
-    @PostMapping("/decrease")
-    public ResponseEntity<Void> decreaseRate(@RequestBody String name){
-        wordService.decreaseRateByName(name);
-        return ResponseEntity.noContent().build();
-    }
-
     @PostMapping("/getByRate")
     public ResponseEntity<List<WordResponseDTO>> getByRate(@RequestBody RequestDTO requestDTO){
         return ResponseEntity.ok(wordService.getWordListByRateAndCount(requestDTO));
@@ -65,9 +54,9 @@ public class WordController {
         return ResponseEntity.ok(wordService.getWordListByRateAndCountAndGroupId(requestDTO));
     }
 
-    @PostMapping("/checkAnswer")
-    public ResponseEntity<Boolean> checkAnswer(@RequestBody WordRequestDTO wordRequestDTO){
-        return ResponseEntity.ok(wordService.checkAnwser(wordRequestDTO));
+    @PostMapping("/getConclusion")
+    public ResponseEntity<String> checkAnswer(@RequestBody QuizRequestDTO quizRequestDTO){
+        return ResponseEntity.ok(wordService.getConclusion(quizRequestDTO.getQuestionList(), quizRequestDTO.getAnswerList()));
     }
 
     @GetMapping("/getByGroupId/{id}")
