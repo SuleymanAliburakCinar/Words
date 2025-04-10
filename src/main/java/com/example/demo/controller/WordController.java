@@ -1,9 +1,6 @@
 package com.example.demo.controller;
 
-import com.example.demo.dto.QuizRequestDTO;
-import com.example.demo.dto.RequestDTO;
-import com.example.demo.dto.WordRequestDTO;
-import com.example.demo.dto.WordResponseDTO;
+import com.example.demo.dto.*;
 import com.example.demo.service.WordService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -55,7 +52,7 @@ public class WordController {
     }
 
     @PostMapping("/getConclusion")
-    public ResponseEntity<String> checkAnswer(@RequestBody QuizRequestDTO quizRequestDTO){
+    public ResponseEntity<QuizReportDTO> checkAnswer(@RequestBody QuizRequestDTO quizRequestDTO){
         return ResponseEntity.ok(wordService.getConclusion(quizRequestDTO.getQuestionList(), quizRequestDTO.getAnswerList()));
     }
 
