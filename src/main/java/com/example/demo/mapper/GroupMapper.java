@@ -1,6 +1,7 @@
 package com.example.demo.mapper;
 
 import com.example.demo.dto.GroupDTO;
+import com.example.demo.dto.GroupExportImportDTO;
 import com.example.demo.dto.GroupSimpleDTO;
 import com.example.demo.dto.WordResponseDTO;
 import com.example.demo.entity.GroupEntity;
@@ -10,7 +11,7 @@ import org.mapstruct.Mapping;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = WordMapper.class)
 public interface GroupMapper {
 
     @Mapping(source = "wordsList", target = "wordEntity")
@@ -29,4 +30,7 @@ public interface GroupMapper {
 
     WordEntity wordResponseDtoToWordEntity(WordResponseDTO wordResponseDTO);
     WordResponseDTO wordEntityToWordResponseDto(WordEntity wordEntity);
+
+    GroupExportImportDTO groupDtoToGroupExportImportDto(GroupDTO groupDTO);
+    GroupEntity groupExportImportDtoToGroupEntity(GroupExportImportDTO groupExportImportDTO);
 }

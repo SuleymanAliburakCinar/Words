@@ -16,6 +16,8 @@ public interface WordRepository extends JpaRepository<WordEntity, Long> {
     @Transactional
     Optional<Long> deleteByName(String name);
     Optional<WordEntity> findByName(String name);
+    Optional<WordEntity> findByNameAndGroupEntity_Id(String name, Long groupId);
+    boolean existsByNameAndId(String name, Long groupId);
 
     @Query(nativeQuery = true, value = "SELECT * from words where " +
             "(correct*1.0/NULLIF(attempt, 0))*100 >= :rate OR attempt = 0 order by rand() limit :count")
