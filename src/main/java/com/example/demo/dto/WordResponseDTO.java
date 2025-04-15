@@ -10,5 +10,5 @@ public class WordResponseDTO {
     private String mean;
     private int attempt;
     private int correct;
-    private GroupDTO group;
+    private Long groupId;
 }

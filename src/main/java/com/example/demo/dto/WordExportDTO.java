@@ -3,9 +3,8 @@ package com.example.demo.dto;
 import lombok.Data;
 
 @Data
-public class WordRequestDTO {
+public class WordExportDTO {
 
     private String name;
     private String mean;
-    private Long groupId;
 }

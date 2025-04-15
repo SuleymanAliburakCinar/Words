@@ -18,12 +18,12 @@ public class GroupController {
 
     @PostMapping
     public ResponseEntity<GroupDTO> addGroup(@RequestBody GroupSimpleDTO groupSimpleDTO){
-        return ResponseEntity.ok(groupService.saveGroup(groupSimpleDTO));
+        return ResponseEntity.ok(groupService.saveSimpleGroup(groupSimpleDTO));
     }
 
     @GetMapping
     public List<GroupSimpleDTO> getAllGroup(){
-        return groupService.getAllGroup();
+        return groupService.getAllGroupSimple();
     }
 
     @GetMapping("/{name}")

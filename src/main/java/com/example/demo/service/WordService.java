@@ -21,26 +21,40 @@ public class WordService {
     private final WordMapper wordMapper;
 
     public WordResponseDTO saveWord(WordRequestDTO wordRequestDTO){
-        if(wordRepository.findByName(wordRequestDTO.getName()).isPresent()){
+        if(wordRepository.findByNameAndGroupEntity_Id(wordRequestDTO.getName(), wordRequestDTO.getGroupId() == null ? 1 : wordRequestDTO.getGroupId()).isPresent()){
             throw new ExistingEntityException(ErrorMessages.ENTITY_ALREADY_EXIST.getMessage());
         }
 
-        if(wordRequestDTO.getGroup() == null){
-            GroupDTO groupDTO = new GroupDTO();
-            groupDTO.setId(Long.parseLong("1"));
-            groupDTO.setName("Vocabulary");
-            wordRequestDTO.setGroup(groupDTO);
+        if(wordRequestDTO.getGroupId() == null){
+            wordRequestDTO.setGroupId(1L);
         }
-        return wordMapper.mapToDto(wordRepository.save(wordMapper.wordRequestDTOToWordEntity(wordRequestDTO)));
+        return wordMapper.wordEntityToWordResponseDto(wordRepository.save(wordMapper.wordRequestDTOToWordEntity(wordRequestDTO)));
+    }
+
+    public void bulkSaveWord(List<WordRequestDTO> wordList){
+        for(WordRequestDTO word : wordList){
+            if(!wordRepository.existsByNameAndId(word.getName(), word.getGroupId())) saveWord(word);
+        }
+    }
+
+    public void saveImportedWord(List<WordExportDTO> wordExportDTOList, Long groupId){
+        List<WordRequestDTO> wordRequestDTOList = wordExportDTOList.stream()
+                .map(dto -> {
+                    WordRequestDTO wordRequestDTO = wordMapper.wordExportDtoToWordRequestDto(dto);
+                    wordRequestDTO.setGroupId(groupId);
+                    return wordRequestDTO;
+                })
+                .toList();
+        bulkSaveWord(wordRequestDTOList);
     }
 
     public WordResponseDTO getWordByName(String name){
-        return wordMapper.mapToDto(wordRepository.findByName(name)
+        return wordMapper.wordEntityToWordResponseDto(wordRepository.findByName(name)
                 .orElseThrow(() -> new NotFoundException(ErrorMessages.ENTITY_NOT_FOUND.getMessage())));
     }
 
     public List<WordResponseDTO> getAllWords(){
-        return wordMapper.mapListToDto(wordRepository.findAll());
+        return wordMapper.wordEntitiesToWordResponseDtos(wordRepository.findAll());
     }
 
     public WordResponseDTO updateWord(Long id, WordRequestDTO wordRequestDTO){
@@ -48,7 +62,7 @@ public class WordService {
                 .orElseThrow(() -> new NotFoundException(ErrorMessages.ENTITY_NOT_FOUND.getMessage()));
         word.setName(wordRequestDTO.getName());
         word.setMean(wordRequestDTO.getMean());
-        return wordMapper.mapToDto(wordRepository.save(word));
+        return wordMapper.wordEntityToWordResponseDto(wordRepository.save(word));
     }
 
     public void deleteWord(String name){
@@ -56,14 +70,14 @@ public class WordService {
                 .orElseThrow(() -> new NotFoundException(ErrorMessages.ENTITY_NOT_FOUND.getMessage()));
     }
 
-    public void increaseRateByName(String name){
+    private void increaseRateByName(String name){
         WordEntity wordEntity = getWordEntityByName(name);
         wordEntity.setCorrect(wordEntity.getCorrect() + 1);
         wordEntity.setAttempt(wordEntity.getAttempt() + 1);
         wordRepository.save(wordEntity);
     }
 
-    public void decreaseRateByName(String name){
+    private void decreaseRateByName(String name){
         WordEntity wordEntity = getWordEntityByName(name);
         wordEntity.setAttempt(wordEntity.getAttempt() + 1);
         wordRepository.save(wordEntity);
@@ -76,12 +90,12 @@ public class WordService {
 
     public List<WordResponseDTO> getWordListByRateAndCount(RequestDTO requestDTO){
         List<WordEntity> wordList = wordRepository.findByRateGreaterThanEqual(requestDTO.getRate(), requestDTO.getCount());
-        return wordList == null ? List.of() : wordMapper.mapListToDto(wordList);
+        return wordList == null ? List.of() : wordMapper.wordEntitiesToWordResponseDtos(wordList);
     }
 
     public List<WordResponseDTO> getWordListByRateAndCountAndGroupId(RequestDTO requestDTO){
         List<WordEntity> wordList = wordRepository.findByRateGreaterThanEqualAndGroupId(requestDTO.getRate(), requestDTO.getCount(), requestDTO.getGroupId());
-        return wordList == null ? List.of() : wordMapper.mapListToDto(wordList);
+        return wordList == null ? List.of() : wordMapper.wordEntitiesToWordResponseDtos(wordList);
     }
 
     public QuizReportDTO getConclusion(List<String> questionList, List<String> answerList){
@@ -128,6 +142,6 @@ public class WordService {
 
     public List<WordResponseDTO> getWordListByGroupId(Long id){
         List<WordEntity> wordEntityList = wordRepository.findByGroupEntity_Id(id);
-        return wordEntityList == null ? List.of() : wordMapper.mapListToDto(wordEntityList);
+        return wordEntityList == null ? List.of() : wordMapper.wordEntitiesToWordResponseDtos(wordEntityList);
     }
 }

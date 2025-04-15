@@ -1,6 +1,6 @@
 package com.example.demo.entity;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -19,6 +19,6 @@ public class GroupEntity {
     private String name;
 
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "groupEntity", cascade = CascadeType.ALL)
-    @JsonBackReference
+    @JsonManagedReference
     private List<WordEntity> wordEntity;
 }
