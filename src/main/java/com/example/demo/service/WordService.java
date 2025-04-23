@@ -10,7 +10,6 @@ import com.example.demo.repository.WordRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -21,20 +20,15 @@ public class WordService {
     private final WordMapper wordMapper;
 
     public WordResponseDTO saveWord(WordRequestDTO wordRequestDTO){
-        if(wordRepository.findByNameAndGroupEntity_Id(wordRequestDTO.getName(), wordRequestDTO.getGroupId() == null ? 1 : wordRequestDTO.getGroupId()).isPresent()){
-            throw new ExistingEntityException(ErrorMessages.ENTITY_ALREADY_EXIST.getMessage());
-        }
-
         if(wordRequestDTO.getGroupId() == null){
             wordRequestDTO.setGroupId(1L);
         }
-        return wordMapper.wordEntityToWordResponseDto(wordRepository.save(wordMapper.wordRequestDTOToWordEntity(wordRequestDTO)));
-    }
 
-    public void bulkSaveWord(List<WordRequestDTO> wordList){
-        for(WordRequestDTO word : wordList){
-            if(!wordRepository.existsByNameAndId(word.getName(), word.getGroupId())) saveWord(word);
+        if(wordRepository.findByNameAndGroupEntity_Id(wordRequestDTO.getName(), wordRequestDTO.getGroupId()).isPresent()){
+            throw new ExistingEntityException(ErrorMessages.ENTITY_ALREADY_EXIST.getMessage());
         }
+
+        return wordMapper.wordEntityToWordResponseDto(wordRepository.save(wordMapper.wordRequestDTOToWordEntity(wordRequestDTO)));
     }
 
     public void saveImportedWord(List<WordExportDTO> wordExportDTOList, Long groupId){
@@ -45,11 +39,14 @@ public class WordService {
                     return wordRequestDTO;
                 })
                 .toList();
-        bulkSaveWord(wordRequestDTOList);
+
+        for(WordRequestDTO word : wordRequestDTOList){
+            if(!wordRepository.existsByNameAndGroupEntity_Id(word.getName(), word.getGroupId())) saveWord(word);
+        }
     }
 
-    public WordResponseDTO getWordByName(String name){
-        return wordMapper.wordEntityToWordResponseDto(wordRepository.findByName(name)
+    public WordResponseDTO getWordById(Long id){
+        return wordMapper.wordEntityToWordResponseDto(wordRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException(ErrorMessages.ENTITY_NOT_FOUND.getMessage())));
     }
 
@@ -60,88 +57,70 @@ public class WordService {
     public WordResponseDTO updateWord(Long id, WordRequestDTO wordRequestDTO){
         WordEntity word = wordRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException(ErrorMessages.ENTITY_NOT_FOUND.getMessage()));
+
+        if(!word.getName().equals(wordRequestDTO.getName())) {
+            wordRepository.findByNameAndGroupEntity_Id(wordRequestDTO.getName(), wordRequestDTO.getGroupId()).ifPresent(w -> {
+                throw new ExistingEntityException(ErrorMessages.ENTITY_ALREADY_EXIST.getMessage());
+            });
+        }
         word.setName(wordRequestDTO.getName());
         word.setMean(wordRequestDTO.getMean());
         return wordMapper.wordEntityToWordResponseDto(wordRepository.save(word));
     }
 
-    public void deleteWord(String name){
-        wordRepository.deleteByName(name)
-                .orElseThrow(() -> new NotFoundException(ErrorMessages.ENTITY_NOT_FOUND.getMessage()));
+    public void deleteWord(Long id){
+        wordRepository.deleteById(id);
     }
 
-    private void increaseRateByName(String name){
-        WordEntity wordEntity = getWordEntityByName(name);
-        wordEntity.setCorrect(wordEntity.getCorrect() + 1);
-        wordEntity.setAttempt(wordEntity.getAttempt() + 1);
-        wordRepository.save(wordEntity);
+    private void increaseRateById(Long id){
+        WordResponseDTO word = getWordById(id);
+        word.setCorrect(word.getCorrect() + 1);
+        word.setAttempt(word.getAttempt() + 1);
+        wordRepository.save(wordMapper.wordResponseDtoToWordEntity(word));
     }
 
-    private void decreaseRateByName(String name){
-        WordEntity wordEntity = getWordEntityByName(name);
-        wordEntity.setAttempt(wordEntity.getAttempt() + 1);
-        wordRepository.save(wordEntity);
+    private void decreaseRateById(Long id){
+        WordResponseDTO word = getWordById(id);
+        word.setAttempt(word.getAttempt() + 1);
+        wordRepository.save(wordMapper.wordResponseDtoToWordEntity(word));
     }
 
-    private WordEntity getWordEntityByName(String name){
-        return wordRepository.findByName(name)
-                .orElseThrow(() -> new NotFoundException(ErrorMessages.ENTITY_NOT_FOUND.getMessage()));
-    }
-
-    public List<WordResponseDTO> getWordListByRateAndCount(RequestDTO requestDTO){
-        List<WordEntity> wordList = wordRepository.findByRateGreaterThanEqual(requestDTO.getRate(), requestDTO.getCount());
+    private List<WordResponseDTO> getWordListByRateAndCount(QuizRequestDTO quizRequestDTO){
+        List<WordEntity> wordList = wordRepository.findByRateGreaterThanEqual(quizRequestDTO.getRate(), quizRequestDTO.getCount());
         return wordList == null ? List.of() : wordMapper.wordEntitiesToWordResponseDtos(wordList);
     }
 
-    public List<WordResponseDTO> getWordListByRateAndCountAndGroupId(RequestDTO requestDTO){
-        List<WordEntity> wordList = wordRepository.findByRateGreaterThanEqualAndGroupId(requestDTO.getRate(), requestDTO.getCount(), requestDTO.getGroupId());
+    private List<WordResponseDTO> getWordListByRateAndCountAndGroupId(QuizRequestDTO quizRequestDTO){
+        List<WordEntity> wordList = wordRepository.findByRateGreaterThanEqualAndGroupId(quizRequestDTO.getRate(), quizRequestDTO.getCount(), quizRequestDTO.getGroupId());
         return wordList == null ? List.of() : wordMapper.wordEntitiesToWordResponseDtos(wordList);
     }
 
-    public QuizReportDTO getConclusion(List<String> questionList, List<String> answerList){
-        List<String> wrongAnsweredQuestions = new ArrayList<>();
-        List<String> yourAnswers = new ArrayList<>();
-        List<String> correctAnswers = new ArrayList<>();
-        int mistakeCount = 0;
+    private double getWordListDifficulty(List<WordResponseDTO> wordResponseDTOList){
         double difficulty = 0;
-        for (int i = 0; i < questionList.size(); i++) {
-            WordResponseDTO word = getWordByName(questionList.get(i));
-            if (!word.getMean().equals(answerList.get(i))) {
-                decreaseRateByName(word.getName());
-                wrongAnsweredQuestions.add(word.getName());
-                yourAnswers.add(answerList.get(i));
-                correctAnswers.add(word.getMean());
-                mistakeCount++;
+        int count = 0;
+        for (WordResponseDTO word : wordResponseDTOList){
+            if(word.getAttempt() > 0) {
+                count++;
+                difficulty += ((double) word.getCorrect() / word.getAttempt());
             }
-            else {
-                increaseRateByName(questionList.get(i));
-            }
-            difficulty += ((double) word.getCorrect() / word.getAttempt());
         }
-        double successRate = mistakeCount == questionList.size() ? 0d : (100d * (questionList.size()-mistakeCount) / questionList.size());
-        return getQuizReport(wrongAnsweredQuestions, yourAnswers, correctAnswers,
-                successRate, difficulty);
+        return count == 0 ? 100 : (1 - difficulty/count) * 100;
     }
 
-    private QuizReportDTO getQuizReport(List<String> wrongAnsweredQuestions, List<String> yourAnswers, List<String> correctAnswers,
-                                 double successRate, double difficulty){
-        QuizReportDTO quizReport = new QuizReportDTO();
-        List<CardDTO> cards = new ArrayList<>();
-        for (int i = 0; i < wrongAnsweredQuestions.size() ; i++) {
-            CardDTO card = new CardDTO();
-            card.setName(wrongAnsweredQuestions.get(i));
-            card.setMean(correctAnswers.get(i));
-            card.setYourAnswer(yourAnswers.get(i));
-            cards.add(card);
+    public QuizQuestionDTO getQuizQuestions(QuizRequestDTO quizRequestDTO){
+        QuizQuestionDTO quizQuestionDTO = new QuizQuestionDTO();
+        if(quizRequestDTO.getGroupId() != null) {
+            quizQuestionDTO.setQuestionList(getWordListByRateAndCountAndGroupId(quizRequestDTO));
         }
-        quizReport.setCards(cards);
-        quizReport.setSuccessRate(successRate);
-        quizReport.setDifficulty(difficulty);
-        return quizReport;
+        else{
+            quizQuestionDTO.setQuestionList(getWordListByRateAndCount(quizRequestDTO));
+        }
+        quizQuestionDTO.setDifficulty(getWordListDifficulty(quizQuestionDTO.getQuestionList()));
+        return quizQuestionDTO;
     }
 
-    public List<WordResponseDTO> getWordListByGroupId(Long id){
-        List<WordEntity> wordEntityList = wordRepository.findByGroupEntity_Id(id);
+    public List<WordResponseDTO> getWordListByGroupId(Long groupId){
+        List<WordEntity> wordEntityList = wordRepository.findByGroupEntity_Id(groupId);
         return wordEntityList == null ? List.of() : wordMapper.wordEntitiesToWordResponseDtos(wordEntityList);
     }
 }

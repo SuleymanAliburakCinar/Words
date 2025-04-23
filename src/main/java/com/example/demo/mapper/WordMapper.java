@@ -19,6 +19,8 @@ public interface WordMapper {
 
     @Mapping(source = "groupEntity.id", target = "groupId")
     WordResponseDTO wordEntityToWordResponseDto(WordEntity word);
+    @Mapping(source = "groupId", target = "groupEntity.id")
+    WordEntity wordResponseDtoToWordEntity(WordResponseDTO wordResponseDTO);
     List<WordResponseDTO> wordEntitiesToWordResponseDtos(List<WordEntity> wordList);
 
     WordExportDTO wordResponseDtoToWordExportDto(WordResponseDTO wordResponseDTO);
