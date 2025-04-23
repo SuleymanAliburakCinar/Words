@@ -25,9 +25,9 @@ public class WordController {
         return wordService.getAllWords();
     }
 
-    @GetMapping("/{name}")
-    public ResponseEntity<WordResponseDTO> getWord(@PathVariable String name){
-        return ResponseEntity.ok(wordService.getWordByName(name));
+    @GetMapping("/{id}")
+    public ResponseEntity<WordResponseDTO> getWord(@PathVariable Long id){
+        return ResponseEntity.ok(wordService.getWordById(id));
     }
 
     @PutMapping("/{id}")
@@ -35,26 +35,17 @@ public class WordController {
         return ResponseEntity.ok(wordService.updateWord(id, wordRequestDTO));
     }
 
-    @DeleteMapping("/{name}")
-    public ResponseEntity<Void> deleteWord(@PathVariable String name){
-        wordService.deleteWord(name);
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteWord(@PathVariable Long id){
+        wordService.deleteWord(id);
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/getByRate")
-    public ResponseEntity<List<WordResponseDTO>> getByRate(@RequestBody RequestDTO requestDTO){
-        return ResponseEntity.ok(wordService.getWordListByRateAndCount(requestDTO));
+    @PostMapping("/quiz")
+    public ResponseEntity<QuizQuestionDTO> getByRate(@RequestBody QuizRequestDTO quizRequestDTO){
+        return ResponseEntity.ok(wordService.getQuizQuestions(quizRequestDTO));
     }
 
-    @PostMapping("/getByRateAndGroup")
-    public ResponseEntity<List<WordResponseDTO>> getByRateAndGroup(@RequestBody RequestDTO requestDTO){
-        return ResponseEntity.ok(wordService.getWordListByRateAndCountAndGroupId(requestDTO));
-    }
-
-    @PostMapping("/getConclusion")
-    public ResponseEntity<QuizReportDTO> checkAnswer(@RequestBody QuizRequestDTO quizRequestDTO){
-        return ResponseEntity.ok(wordService.getConclusion(quizRequestDTO.getQuestionList(), quizRequestDTO.getAnswerList()));
-    }
 
     @GetMapping("/getByGroupId/{id}")
     public ResponseEntity<List<WordResponseDTO>> getByGroupId(@PathVariable Long id){

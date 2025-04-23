@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -29,11 +30,11 @@ public class GroupService {
         return groupMapper.groupEntityToGroupDto(groupRepository.save(groupMapper.groupSimpleDtoToGroupEntity(groupSimpleDTO)));
     }
 
-    public Long saveImportedGroup(GroupExportImportDTO groupExportImportDTO){
+    public Optional<GroupEntity> saveImportedGroup(GroupExportImportDTO groupExportImportDTO){
         if(existsByName(groupExportImportDTO.getName())){
-            return 0L;
+            return Optional.empty();
         }
-        return groupRepository.save(groupMapper.groupExportImportDtoToGroupEntity(groupExportImportDTO)).getId();
+        return Optional.of(groupRepository.save(groupMapper.groupExportImportDtoToGroupEntity(groupExportImportDTO)));
     }
 
     public GroupDTO getGroupByName(String name){

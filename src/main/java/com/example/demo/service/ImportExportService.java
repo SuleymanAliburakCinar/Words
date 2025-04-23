@@ -14,10 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 @RequiredArgsConstructor
 @Service
@@ -58,10 +55,13 @@ public class ImportExportService {
         List<GroupExportImportDTO> conflictingData = new ArrayList<>();
         ImportConflictResponseDTO importConflictResponseDTO = new ImportConflictResponseDTO();
         for(GroupExportImportDTO group : importData){
-            if(groupService.saveImportedGroup(group) == 0){
-                conflictingData.add(group);
-                importConflictResponseDTO.addGroupName(group.getName());
-            }
+            groupService.saveImportedGroup(group).ifPresentOrElse(
+                    addedGroup -> wordService.saveImportedWord(group.getWordsList(),addedGroup.getId()),
+                    () -> {
+                        conflictingData.add(group);
+                        importConflictResponseDTO.addGroupName(group.getName());
+                    }
+            );
         }
         importConflictResponseDTO.setJson(encodeToString(conflictingData));
         return importConflictResponseDTO;
@@ -75,8 +75,7 @@ public class ImportExportService {
             switch (importRequestDTO.getConflictResolution().get(group.getName())){
                 case RENAME -> {
                     group.setName(String.format("%s (%d)", group.getName(), Instant.now().getEpochSecond()));
-                    Long groupId = groupService.saveImportedGroup(group);
-                    wordService.saveImportedWord(group.getWordsList(), groupId);
+                    groupService.saveImportedGroup(group).ifPresent(addedGroup -> wordService.saveImportedWord(group.getWordsList(), addedGroup.getId()));
                     successCount++;
                 }
                 case MERGE -> {
