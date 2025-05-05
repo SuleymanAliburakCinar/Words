@@ -64,6 +64,12 @@ public class ImportExportService {
             );
         }
         importConflictResponseDTO.setJson(encodeToString(conflictingData));
+        importConflictResponseDTO.setMsg(
+                String.format(
+                        "%d groups added, %d conflicts detected. Please resolve the conflicts.",
+                        (importData.size() - importConflictResponseDTO.getGroupNameList().size()),
+                        importConflictResponseDTO.getGroupNameList().size()
+                ));
         return importConflictResponseDTO;
     }
 

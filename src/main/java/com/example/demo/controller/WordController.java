@@ -51,4 +51,15 @@ public class WordController {
     public ResponseEntity<List<WordResponseDTO>> getByGroupId(@PathVariable Long id){
         return ResponseEntity.ok(wordService.getWordListByGroupId(id));
     }
+
+    @PostMapping("/quiz/answer")
+    public ResponseEntity<Void> processAnswers(@RequestBody List<QuizAnswersDTO> quizAnswersDTOList){
+        wordService.processAnswers(quizAnswersDTOList);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/groupInfo/{groupId}")
+    public ResponseEntity<GroupInfoProjection> getGroupInfo(@PathVariable Long groupId){
+        return ResponseEntity.ok(wordService.getGroupInfo(groupId));
+    }
 }

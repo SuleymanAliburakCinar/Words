@@ -10,6 +10,7 @@ public class ImportConflictResponseDTO {
 
     private String json;
     private List<String> groupNameList = new ArrayList<>();
+    private String msg;
 
     public void addGroupName(String groupName){
         getGroupNameList().add(groupName);
