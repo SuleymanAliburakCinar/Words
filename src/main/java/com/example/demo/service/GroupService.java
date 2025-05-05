@@ -64,6 +64,10 @@ public class GroupService {
                 .orElseThrow(() -> new NotFoundException(ErrorMessages.ENTITY_NOT_FOUND.getMessage()));
     }
 
+    public void bulkDelete(List<Long> groupIdList){
+        groupIdList.forEach(groupRepository::deleteById);
+    }
+
     public GroupDTO updateGroup(String name, String newName){
         GroupEntity groupEntity = groupRepository.findByName(name)
                 .orElseThrow(() -> new NotFoundException(ErrorMessages.ENTITY_NOT_FOUND.getMessage()));

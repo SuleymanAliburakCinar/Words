@@ -21,7 +21,7 @@ public class ImportExportController {
         return ResponseEntity.ok(importExportService.exportAllGroupsAsJson());
     }
 
-    @PostMapping("/export/selected")
+    @PostMapping("/export")
     public ResponseEntity<String> exportGroups(@RequestBody List<Long> ids){
         return ResponseEntity.ok(importExportService.exportGroupsAsJson(ids));
     }

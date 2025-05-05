@@ -85,6 +85,16 @@ public class WordService {
         wordRepository.save(wordMapper.wordResponseDtoToWordEntity(word));
     }
 
+    public void processAnswers(List<QuizAnswersDTO> quizAnswersDTOList){
+        quizAnswersDTOList.forEach(answer -> {
+            if (answer.isResult()) {
+                increaseRateById(answer.getWordId());
+            } else {
+                decreaseRateById(answer.getWordId());
+            }
+        });
+    }
+
     private List<WordResponseDTO> getWordListByRateAndCount(QuizRequestDTO quizRequestDTO){
         List<WordEntity> wordList = wordRepository.findByRateGreaterThanEqual(quizRequestDTO.getRate(), quizRequestDTO.getCount());
         return wordList == null ? List.of() : wordMapper.wordEntitiesToWordResponseDtos(wordList);
@@ -93,6 +103,10 @@ public class WordService {
     private List<WordResponseDTO> getWordListByRateAndCountAndGroupId(QuizRequestDTO quizRequestDTO){
         List<WordEntity> wordList = wordRepository.findByRateGreaterThanEqualAndGroupId(quizRequestDTO.getRate(), quizRequestDTO.getCount(), quizRequestDTO.getGroupId());
         return wordList == null ? List.of() : wordMapper.wordEntitiesToWordResponseDtos(wordList);
+    }
+
+    public GroupInfoProjection getGroupInfo(Long groupId){
+        return wordRepository.findAttemptToCountRatioByGroupId(groupId);
     }
 
     private double getWordListDifficulty(List<WordResponseDTO> wordResponseDTOList){

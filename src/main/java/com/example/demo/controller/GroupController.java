@@ -37,6 +37,12 @@ public class GroupController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/bulkDelete")
+    public ResponseEntity<Void> bulkDeleteGroup(@RequestBody List<Long> groupIdList){
+        groupService.bulkDelete(groupIdList);
+        return ResponseEntity.noContent().build();
+    }
+
     @PutMapping("/{name}/{newName}")
     public ResponseEntity<GroupDTO> updateGroup(@PathVariable String name, @PathVariable String newName){
         return ResponseEntity.ok(groupService.updateGroup(name, newName));
