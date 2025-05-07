@@ -9,6 +9,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -24,8 +26,9 @@ public class ImportExportService {
     private final GroupMapper groupMapper;
     private final ObjectMapper objectMapper;
     private final WordService wordService;
+    private final Validator validator;
 
-    public String exportAllGroupsAsJson(){
+    public String exportAllGroupsAsJson() {
         List<GroupDTO> groupDTOList = groupService.getAllGroup();
         List<GroupExportImportDTO> groupExportImportDTOList = groupDTOList.stream()
                 .map(groupMapper::groupDtoToGroupExportImportDto)
@@ -34,36 +37,38 @@ public class ImportExportService {
         return encodeToString(groupExportImportDTOList);
     }
 
-    public String exportGroupsAsJson(List<Long> groupIds){
+    public String exportGroupsAsJson(List<Long> groupIds) {
         List<GroupExportImportDTO> groupExportImportDTOList = new ArrayList<>();
-        for(Long id : groupIds){
+        for (Long id : groupIds) {
             groupExportImportDTOList.add(groupMapper.groupDtoToGroupExportImportDto(groupService.getGroupById(id)));
         }
 
         return encodeToString(groupExportImportDTOList);
     }
 
-    public String exportGroupAsJson(Long groupId){
+    public String exportGroupAsJson(Long groupId) {
         GroupDTO group = groupService.getGroupById(groupId);
         GroupExportImportDTO groupExportImportDTO = groupMapper.groupDtoToGroupExportImportDto(group);
 
         return encodeToString(groupExportImportDTO);
     }
 
-    public ImportConflictResponseDTO checkImportConflictAndSave(String encodedJson){
+    public ImportConflictResponseDTO checkImportConflictAndSave(String encodedJson) {
         List<GroupExportImportDTO> importData = decodeToDTO(encodedJson);
         List<GroupExportImportDTO> conflictingData = new ArrayList<>();
         ImportConflictResponseDTO importConflictResponseDTO = new ImportConflictResponseDTO();
-        for(GroupExportImportDTO group : importData){
+        for (GroupExportImportDTO group : importData) {
             groupService.saveImportedGroup(group).ifPresentOrElse(
-                    addedGroup -> wordService.saveImportedWord(group.getWordsList(),addedGroup.getId()),
+                    addedGroup -> wordService.saveImportedWord(group.getWordsList(), addedGroup.getId()),
                     () -> {
                         conflictingData.add(group);
                         importConflictResponseDTO.addGroupName(group.getName());
                     }
             );
         }
-        importConflictResponseDTO.setJson(encodeToString(conflictingData));
+        if (!conflictingData.isEmpty()) {
+            importConflictResponseDTO.setJson(encodeToString(conflictingData));
+        }
         importConflictResponseDTO.setMsg(
                 String.format(
                         "%d groups added, %d conflicts detected. Please resolve the conflicts.",
@@ -73,12 +78,12 @@ public class ImportExportService {
         return importConflictResponseDTO;
     }
 
-    public String importDecidedData(ImportRequestDTO importRequestDTO){
+    public String importDecidedData(ImportRequestDTO importRequestDTO) {
         List<GroupExportImportDTO> importData = decodeToDTO(importRequestDTO.getData());
         int errorCount = 0;
         int successCount = 0;
-        for(GroupExportImportDTO group : importData){
-            switch (importRequestDTO.getConflictResolution().get(group.getName())){
+        for (GroupExportImportDTO group : importData) {
+            switch (importRequestDTO.getConflictResolution().get(group.getName())) {
                 case RENAME -> {
                     group.setName(String.format("%s (%d)", group.getName(), Instant.now().getEpochSecond()));
                     groupService.saveImportedGroup(group).ifPresent(addedGroup -> wordService.saveImportedWord(group.getWordsList(), addedGroup.getId()));
@@ -96,29 +101,41 @@ public class ImportExportService {
         return String.format("%d data were imported successfully. %d Error", successCount, errorCount);
     }
 
-    private List<GroupExportImportDTO> decodeToDTO(String encodedJson){
+    private List<GroupExportImportDTO> decodeToDTO(String encodedJson) {
         try {
             String json = new String(Base64.getDecoder().decode(encodedJson.getBytes(StandardCharsets.UTF_8)));
             JsonNode jsonNode = objectMapper.readTree(json);
+            List<GroupExportImportDTO> dtoList;
 
-            if(jsonNode.isArray()) {
-                return objectMapper.readValue(json, new TypeReference<>() {});
-            } else if(jsonNode.isObject()) {
-                return List.of(objectMapper.readValue(json, GroupExportImportDTO.class));
+            if (jsonNode.isArray()) {
+                dtoList = objectMapper.readValue(json, new TypeReference<>() {
+                });
+            } else {
+                dtoList = List.of(objectMapper.readValue(json, GroupExportImportDTO.class));
             }
-            return Collections.emptyList();
-        }
-        catch (JsonProcessingException e){
+
+            validateDTO(dtoList);
+
+            return dtoList;
+        } catch (JsonProcessingException e) {
             throw new RuntimeException("JSON Decode Error", e);
         }
     }
 
-    private String encodeToString(Object object){
+    private void validateDTO(List<GroupExportImportDTO> dtoList) {
+        for (GroupExportImportDTO groupExportImportDTO : dtoList) {
+            Set<ConstraintViolation<GroupExportImportDTO>> violations = validator.validate(groupExportImportDTO);
+            if (!violations.isEmpty()) {
+                throw new IllegalArgumentException("Import data is incorrect");
+            }
+        }
+    }
+
+    private String encodeToString(Object object) {
         try {
             String json = objectMapper.writeValueAsString(object);
             return Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
-        }
-        catch (JsonProcessingException e) {
+        } catch (JsonProcessingException e) {
             throw new RuntimeException("JSON Encode Error", e);
         }
     }
